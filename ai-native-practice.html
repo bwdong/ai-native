@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-Native 实践 · 从 Vibe Coding 到 Harness Engineering</title>
+<style>
+  :root{
+    --bg:#0a0e14;
+    --bg-elev:#10161f;
+    --bg-card:#141b26;
+    --border:#1f2937;
+    --border-strong:#2d3a4c;
+    --text:#e6edf3;
+    --text-dim:#8b949e;
+    --text-mute:#6e7681;
+    --accent:#00d4ff;
+    --accent-2:#a78bfa;
+    --accent-3:#34d399;
+    --warn:#fbbf24;
+    --danger:#f87171;
+    --code-bg:#0d1117;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;scroll-padding-top:80px}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.7;
+    font-size:15px;
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(0,212,255,.08) 0%, transparent 40%),
+      radial-gradient(circle at 80% 30%, rgba(167,139,250,.08) 0%, transparent 40%);
+    background-attachment:fixed;
+  }
+
+  /* nav */
+  .topnav{
+    position:sticky;top:0;z-index:50;
+    background:rgba(10,14,20,.85);
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);
+  }
+  .topnav-inner{
+    max-width:1100px;margin:0 auto;
+    display:flex;align-items:center;gap:24px;
+    padding:14px 32px;
+  }
+  .brand{
+    font-weight:700;font-size:15px;letter-spacing:.5px;
+    background:linear-gradient(90deg,var(--accent),var(--accent-2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .topnav a{
+    color:var(--text-dim);text-decoration:none;font-size:13px;
+    padding:6px 10px;border-radius:6px;transition:all .2s;
+  }
+  .topnav a:hover{color:var(--text);background:rgba(255,255,255,.04)}
+
+  /* hero */
+  .hero{
+    max-width:1100px;margin:0 auto;
+    padding:80px 32px 60px;
+  }
+  .hero .eyebrow{
+    display:inline-block;font-size:12px;
+    letter-spacing:2px;text-transform:uppercase;
+    color:var(--accent);margin-bottom:14px;
+    padding:4px 12px;border-radius:6px;
+    border:1px solid rgba(0,212,255,.3);
+    background:rgba(0,212,255,.05);
+  }
+  .hero h1{
+    font-size:clamp(28px,4vw,46px);
+    line-height:1.2;
+    margin-bottom:18px;
+    background:linear-gradient(135deg,#fff 0%,#a78bfa 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero .lede{
+    color:var(--text-dim);font-size:17px;max-width:760px;
+  }
+  .tag-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+  .tag{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:12px;padding:5px 11px;border-radius:999px;
+    background:rgba(0,212,255,.08);
+    border:1px solid rgba(0,212,255,.25);
+    color:#7dd3fc;
+  }
+  .tag.purple{background:rgba(167,139,250,.08);border-color:rgba(167,139,250,.25);color:#c4b5fd}
+  .tag.green{background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.25);color:#6ee7b7}
+  .tag.amber{background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25);color:#fcd34d}
+
+  /* sections */
+  main{max-width:1100px;margin:0 auto;padding:0 32px 80px}
+  section.chapter{margin-bottom:80px;scroll-margin-top:80px}
+  .chapter-head{
+    display:flex;align-items:baseline;gap:18px;
+    margin-bottom:32px;padding-bottom:18px;
+    border-bottom:1px solid var(--border);
+  }
+  .chapter-num{
+    font-family:"SF Mono",Menlo,Consolas,monospace;
+    font-size:13px;color:var(--accent);
+    padding:5px 11px;border:1px solid rgba(0,212,255,.3);
+    border-radius:6px;background:rgba(0,212,255,.05);
+    white-space:nowrap;
+  }
+  .chapter-head h2{font-size:28px;font-weight:700}
+  .chapter-head .subtitle{color:var(--text-dim);font-size:14px;margin-left:auto}
+
+  section.subsection{margin-bottom:36px;scroll-margin-top:80px}
+  .sub-head{
+    display:flex;align-items:center;gap:12px;
+    margin-bottom:18px;
+  }
+  .sub-num{
+    font-family:"SF Mono",Menlo,Consolas,monospace;
+    font-size:12px;color:var(--accent-2);
+    padding:3px 9px;border-radius:5px;
+    background:rgba(167,139,250,.08);
+    border:1px solid rgba(167,139,250,.25);
+  }
+  .sub-head h3{font-size:20px;font-weight:600;color:var(--text)}
+
+  /* card */
+  .card{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:24px 28px;
+    margin-bottom:18px;
+    transition:border-color .2s;
+  }
+  .card:hover{border-color:var(--border-strong)}
+  .card h4{
+    font-size:15px;font-weight:600;margin-bottom:12px;
+    display:flex;align-items:center;gap:10px;color:var(--text);
+  }
+  .card h4::before{
+    content:"";width:3px;height:14px;border-radius:2px;
+    background:linear-gradient(180deg,var(--accent),var(--accent-2));
+  }
+  .card p{color:var(--text-dim);font-size:14.5px;margin-bottom:8px}
+  .card p:last-child{margin-bottom:0}
+  .card ul{padding-left:22px;margin:8px 0;color:var(--text-dim);font-size:14.5px}
+  .card li{margin:6px 0}
+  .card li strong{color:var(--text);font-weight:600}
+  .card code{
+    font-family:"SF Mono",Menlo,Consolas,monospace;
+    font-size:13px;background:var(--code-bg);
+    padding:2px 7px;border-radius:4px;
+    color:#7dd3fc;border:1px solid var(--border);
+  }
+
+  /* problem list */
+  .problem-list{display:grid;grid-template-columns:1fr;gap:12px;margin-top:14px}
+  @media(min-width:760px){.problem-list{grid-template-columns:1fr 1fr}}
+  .problem{
+    background:var(--bg-elev);
+    border:1px solid var(--border);
+    border-left:3px solid var(--danger);
+    border-radius:8px;padding:14px 18px;
+  }
+  .problem .ptitle{
+    font-size:14px;font-weight:600;color:#fca5a5;
+    margin-bottom:6px;
+  }
+  .problem .pbody{font-size:13.5px;color:var(--text-dim);line-height:1.65}
+
+  /* timeline (evolution) */
+  .timeline{
+    position:relative;
+    padding-left:28px;
+    margin-top:18px;
+  }
+  .timeline::before{
+    content:"";position:absolute;left:8px;top:8px;bottom:8px;
+    width:2px;background:linear-gradient(180deg,var(--accent) 0%,var(--accent-2) 50%,var(--accent-3) 100%);
+    border-radius:2px;
+  }
+  .stage{
+    position:relative;margin-bottom:22px;
+    background:var(--bg-card);border:1px solid var(--border);
+    border-radius:10px;padding:18px 22px;
+  }
+  .stage::before{
+    content:"";position:absolute;left:-26px;top:22px;
+    width:14px;height:14px;border-radius:50%;
+    background:var(--bg);
+    border:3px solid var(--accent-2);
+    box-shadow:0 0 0 3px var(--bg);
+  }
+  .stage:last-child{margin-bottom:0}
+  .stage .era{
+    font-family:"SF Mono",Menlo,Consolas,monospace;
+    font-size:11px;color:var(--accent-2);
+    letter-spacing:1px;margin-bottom:6px;
+  }
+  .stage h4{
+    font-size:16px;font-weight:600;margin-bottom:8px;
+    color:var(--text);
+  }
+  .stage p{font-size:13.5px;color:var(--text-dim);margin-bottom:6px}
+  .stage p:last-child{margin-bottom:0}
+  .stage .pain{
+    margin-top:10px;padding-top:10px;
+    border-top:1px dashed var(--border);
+    font-size:12.5px;color:#fcd34d;
+  }
+  .stage .pain strong{color:#fcd34d}
+
+  /* essence highlight */
+  .essence{
+    background:
+      linear-gradient(135deg,rgba(0,212,255,.08) 0%,rgba(167,139,250,.08) 100%);
+    border:1px solid rgba(167,139,250,.3);
+    border-radius:14px;padding:28px 32px;margin:18px 0;
+  }
+  .essence .label{
+    font-size:11px;font-weight:700;letter-spacing:2px;
+    color:var(--accent-2);margin-bottom:10px;
+  }
+  .essence .key{
+    font-size:22px;font-weight:700;line-height:1.45;
+    color:var(--text);margin-bottom:14px;
+  }
+  .essence .key em{
+    font-style:normal;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .essence p{font-size:14.5px;color:var(--text-dim)}
+
+  /* harness layer diagram */
+  .harness-stack{
+    display:flex;flex-direction:column;gap:8px;
+    margin-top:18px;padding:18px;
+    background:var(--bg-elev);
+    border:1px solid var(--border);
+    border-radius:12px;
+  }
+  .layer-row{
+    display:grid;grid-template-columns:140px 1fr;gap:14px;
+    align-items:center;padding:14px 16px;
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:8px;
+    transition:transform .2s,border-color .2s;
+  }
+  .layer-row:hover{transform:translateX(4px);border-color:var(--accent)}
+  .layer-row .role{
+    font-family:"SF Mono",Menlo,Consolas,monospace;
+    font-size:12px;color:var(--accent);
+    padding:5px 10px;border-radius:5px;
+    background:rgba(0,212,255,.08);
+    border:1px solid rgba(0,212,255,.25);
+    text-align:center;font-weight:600;
+  }
+  .layer-row .desc{font-size:13.5px;color:var(--text-dim)}
+  .layer-row .desc strong{color:var(--text)}
+  .layer-row.top .role{color:var(--accent-2);background:rgba(167,139,250,.08);border-color:rgba(167,139,250,.25)}
+  .layer-row.bottom .role{color:var(--accent-3);background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.25)}
+
+  /* CTA card to next page */
+  .cta{
+    margin-top:24px;
+    background:
+      linear-gradient(135deg,rgba(0,212,255,.10) 0%,rgba(167,139,250,.10) 100%);
+    border:1px solid rgba(0,212,255,.35);
+    border-radius:14px;
+    padding:26px 30px;
+    display:flex;flex-direction:column;gap:14px;
+  }
+  .cta .cta-eyebrow{
+    font-size:11px;font-weight:700;letter-spacing:2px;
+    color:var(--accent);text-transform:uppercase;
+  }
+  .cta h4{
+    font-size:18px;font-weight:700;color:var(--text);
+    margin:0;
+  }
+  .cta p{font-size:14px;color:var(--text-dim);margin:0}
+  .cta a{
+    display:inline-flex;align-items:center;gap:8px;
+    align-self:flex-start;
+    padding:10px 18px;border-radius:8px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    color:#0a0e14;text-decoration:none;
+    font-weight:600;font-size:14px;
+    transition:transform .2s,box-shadow .2s;
+  }
+  .cta a:hover{
+    transform:translateY(-1px);
+    box-shadow:0 6px 20px rgba(0,212,255,.25);
+  }
+  .cta a::after{content:"→";font-size:16px}
+
+  /* callout */
+  .callout{
+    border-left:3px solid var(--warn);
+    background:rgba(251,191,36,.05);
+    padding:14px 18px;border-radius:0 8px 8px 0;
+    margin:14px 0;font-size:14px;color:#fcd34d;
+  }
+  .callout.info{border-color:var(--accent);background:rgba(0,212,255,.05);color:#7dd3fc}
+  .callout strong{color:inherit}
+
+  /* footer */
+  footer{
+    max-width:1100px;margin:0 auto;
+    padding:32px;border-top:1px solid var(--border);
+    color:var(--text-mute);font-size:13px;text-align:center;
+  }
+
+  section:target .chapter-head,
+  section:target .sub-head{
+    animation:flash 1.2s ease;
+  }
+  @keyframes flash{
+    0%{box-shadow:0 0 0 2px rgba(0,212,255,.4)}
+    100%{box-shadow:0 0 0 0 transparent}
+  }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <span class="brand">◆ AI-Native 实践</span>
+    <a href="#ch1">第一章 · 背景</a>
+    <a href="#ch2">第二章 · 解决方案</a>
+    <a href="claude-code-concepts.html" style="margin-left:auto;color:var(--accent)">▸ 五大扩展机制</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <span class="eyebrow">AI-Native Engineering</span>
+  <h1>把 AI 编进研发流水线，<br>而不是放在工程师手边</h1>
+  <p class="lede">
+    从「<strong>用 AI 写代码</strong>」到「<strong>把 AI 嵌入工程系统</strong>」，是一次从工具使用者到系统建造者的角色转换。
+    本文先讲清这一转变的<strong>背景与本质</strong>，再给出可落地的<strong>解决方案</strong> ——
+    AI 工程的演进路径，以及指向未来的关键词：<strong>Harness Engineering</strong>。
+  </p>
+  <div class="tag-row">
+    <span class="tag">行业现状</span>
+    <span class="tag purple">本质洞察</span>
+    <span class="tag green">演进路径</span>
+    <span class="tag amber">Harness</span>
+  </div>
+</header>
+
+<main>
+
+<!-- =================== 第一章 · 背景 =================== -->
+<section class="chapter" id="ch1">
+  <div class="chapter-head">
+    <span class="chapter-num">第一章</span>
+    <h2>背景</h2>
+    <span class="subtitle">为什么我们要谈 AI-Native</span>
+  </div>
+
+  <!-- 1.1 行业现状 -->
+  <section class="subsection" id="ch1-1">
+    <div class="sub-head">
+      <span class="sub-num">1.1</span>
+      <h3>行业现状 · AI 已经进入研发，但远未「融入」研发</h3>
+    </div>
+
+    <div class="card">
+      <p>
+        IDE 补全、对话助手、能改代码的 Agent —— 过去两年，AI 编码工具几乎在每个团队都已落地。
+        但<strong>接入不等于融入</strong>：它仍停留在工程师个人工位，是单点提效的工具，而非组织能力。
+        行业的关注点也从「能不能用」转向了「怎么用得稳、规模化、可治理」。
+      </p>
+    </div>
+  </section>
+
+  <!-- 1.2 问题所在 -->
+  <section class="subsection" id="ch1-2">
+    <div class="sub-head">
+      <span class="sub-num">1.2</span>
+      <h3>问题所在 · 个人提效 ≠ 组织提效</h3>
+    </div>
+
+    <div class="card">
+      <p>
+        个人工位上 AI 写代码的成果非常振奋 —— 一晚一个原型、一行命令重构一个模块。
+        但视角从「<strong>个人</strong>」拉到「<strong>团队 / 产品</strong>」，问题就开始浮现：
+      </p>
+    </div>
+
+    <div class="problem-list">
+      <div class="problem">
+        <div class="ptitle">▎ Vibe Coding 的不可控</div>
+        <div class="pbody">同一个需求让不同人用 AI 写，产出差异巨大；今天能跑、明天能不能跑全凭手感。代码进入仓库后，
+        出问题往往找不到「<em>当时为什么这么写</em>」。</div>
+      </div>
+      <div class="problem">
+        <div class="ptitle">▎ 上下文断裂</div>
+        <div class="pbody">AI 不知道公司内部的 RPC 协议、不知道历史遗留的命名陷阱、不知道哪条路是被废弃的双轨。
+        每次都要重新解释，上下文「漏」在每位工程师的私人会话里。</div>
+      </div>
+      <div class="problem">
+        <div class="ptitle">▎ 经验无法沉淀</div>
+        <div class="pbody">资深同事知道「这一类需求必须先做 X，再做 Y，否则上线必崩」 —— 这些经验只留在他脑子里。
+        他离开后，AI 还是会重新踩一遍。</div>
+      </div>
+      <div class="problem">
+        <div class="ptitle">▎ 缺乏强制约束</div>
+        <div class="pbody">「禁止 force push」「提交前必跑测试」「敏感配置不许写进 prompt」 —— 全靠口头约定和事后 review。
+        AI 速度越快，违规暴露得越快。</div>
+      </div>
+      <div class="problem">
+        <div class="ptitle">▎ 工具孤岛</div>
+        <div class="pbody">AI 在 IDE 里很聪明，但接不上 DUCC、推不动行云、读不了 JoySpace —— 一旦离开纯代码场景，
+        就需要工程师人肉中转。</div>
+      </div>
+      <div class="problem">
+        <div class="ptitle">▎ 治理与审计真空</div>
+        <div class="pbody">谁让 AI 改了什么、为什么改、是否符合规范？目前几乎没有团队能给出答案。AI 越深入流水线，
+        这个真空就越危险。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1.3 AI-Native 的本质 -->
+  <section class="subsection" id="ch1-3">
+    <div class="sub-head">
+      <span class="sub-num">1.3</span>
+      <h3>AI-Native 的本质 · 让 AI 成为系统的「一等公民」</h3>
+    </div>
+
+    <div class="essence">
+      <div class="label">▎ 一句话本质</div>
+      <div class="key">
+        六个问题，根因只有一个 ——<br>
+        <em>AI 是「工具」还是「系统组件」</em>，决定了它是个人提效还是组织能力。
+      </div>
+      <p>
+        Cloud-Native 时代我们重新设计应用以适配云；AI-Native 时代我们重新设计研发流程，
+        让 AI 不是流程<strong>之外</strong>的助手，而是流程<strong>之内</strong>的执行单元。
+      </p>
+    </div>
+
+    <div class="card">
+      <h4>四个判断标准</h4>
+      <p>判断一支团队是否真的 AI-Native，不看用了多少 AI，看下面四件事是否成立：</p>
+      <ul>
+        <li>① <strong>知识沉淀</strong>：项目知识不靠口口相传，AI 一来就能上手</li>
+        <li>② <strong>流程标准化</strong>：常见任务有标准动作，AI 按既定流程执行而非自由发挥</li>
+        <li>③ <strong>能力可达</strong>：AI 能直接接触公司内部系统（配置、部署、工单、文档），不再人肉中转</li>
+        <li>④ <strong>行为可控</strong>：危险动作被自动拦截，关键事件有自动化响应，不依赖事后复盘</li>
+      </ul>
+    </div>
+
+    <div class="callout">
+      <strong>方向：</strong>AI-Native 的终局，是让 AI 承担<strong>尽可能多的开发过程</strong> ——
+      需求理解、方案设计、编码、测试、发布。人的角色随之上移，从「<em>键盘手</em>」转向「<em>系统建造者</em>」，
+      去建 Harness、设规则、定边界，让这件事能<strong>规模化、安全地</strong>发生。
+    </div>
+  </section>
+</section>
+
+<!-- =================== 第二章 · 解决方案 =================== -->
+<section class="chapter" id="ch2">
+  <div class="chapter-head">
+    <span class="chapter-num">第二章</span>
+    <h2>解决方案</h2>
+    <span class="subtitle">从演进规律到工程基座</span>
+  </div>
+
+  <!-- 2.1 AI 工程演进过程 -->
+  <section class="subsection" id="ch2-1">
+    <div class="sub-head">
+      <span class="sub-num">2.1</span>
+      <h3>AI 工程演进过程 · 从补全器到工程基座</h3>
+    </div>
+
+    <div class="card">
+      <p>
+        要看清下一步往哪走，先看清走过了哪几步。AI 在研发体系中的位置，大致经历了五个阶段
+        —— 每一阶段解决了上一阶段的痛点，也催生了下一阶段的需求。
+      </p>
+    </div>
+
+    <div class="timeline">
+
+      <div class="stage">
+        <div class="era">阶段 1 · 2021 - 2023</div>
+        <h4>补全时代 · AI 在 IDE 旁</h4>
+        <p>以 GitHub Copilot 为代表。AI 看着你正在写的代码，按 Tab 补完函数体。本质是「<strong>更聪明的 IntelliSense</strong>」。</p>
+        <div class="pain"><strong>瓶颈：</strong>只能补「下一行」，对跨文件、跨模块的任务无能为力。</div>
+      </div>
+
+      <div class="stage">
+        <div class="era">阶段 2 · 2023</div>
+        <h4>对话时代 · AI 在浏览器里</h4>
+        <p>以 ChatGPT 为代表。开发者把代码贴进对话框，让 AI 解释、改写、debug。AI 第一次具备「<strong>多轮推理</strong>」能力，
+        但与真实代码库完全脱钩 —— 改完还要复制粘贴回来。</p>
+        <div class="pain"><strong>瓶颈：</strong>上下文断裂、人肉搬运、规模化困难。</div>
+      </div>
+
+      <div class="stage">
+        <div class="era">阶段 3 · 2024</div>
+        <h4>Agent 时代 · AI 接管键盘</h4>
+        <p>以 Cursor / 早期 Claude Code 为代表。AI 能自主读文件、改代码、跑命令、迭代。开发者的角色从「<strong>键盘手</strong>」变成「<strong>验收员</strong>」。</p>
+        <div class="pain"><strong>瓶颈：</strong>能力强但不受控 —— 它会改不该改的、会跳过测试、会在错误的方向上一路狂奔。</div>
+      </div>
+
+      <div class="stage">
+        <div class="era">阶段 4 · 2025</div>
+        <h4>规则时代 · 给 Agent 装上缰绳</h4>
+        <p>团队开始为 AI 建立<strong>项目记忆</strong>（CLAUDE.md）、<strong>工作流模板</strong>（Skills）、
+        <strong>外部能力接入</strong>（MCP）、<strong>事件钩子</strong>（Hooks）。AI 不再是脱缰的野马，而是受控的执行单元。</p>
+        <div class="pain"><strong>瓶颈：</strong>规则散落各处，缺乏统一的工程范式来组织它们。</div>
+      </div>
+
+      <div class="stage">
+        <div class="era">阶段 5 · 现在</div>
+        <h4>基座时代 · Harness Engineering</h4>
+        <p>规则、流程、外部能力、约束机制被组织成一套<strong>统一的工程基座</strong>。AI 不再「跑在 IDE 里」，
+        而是「<strong>跑在基座上</strong>」 —— 像应用跑在 Kubernetes 上一样。这就是下一节要展开的内容。</p>
+        <div class="pain" style="color:var(--accent-3);border-color:rgba(52,211,153,.3)"><strong>突破：</strong>
+        AI 第一次具备「可治理、可复现、可规模化」的工程属性。</div>
+      </div>
+
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h4>演进规律 · 一句话</h4>
+      <p>
+        每一代都在<strong>放大 AI 的边界</strong>（IDE → 浏览器 → 仓库 → 整个研发系统），
+        同时<strong>转移控制权</strong>（手动 → AI 自主 → 系统约束）。
+        瓶颈从来不是模型能力，而是<em>怎么把它接进来</em>。
+      </p>
+    </div>
+  </section>
+
+  <!-- 2.2 Harness Engineering -->
+  <section class="subsection" id="ch2-2">
+    <div class="sub-head">
+      <span class="sub-num">2.2</span>
+      <h3>Harness Engineering · 给 AI 套上工程的「挽具」</h3>
+    </div>
+
+    <div class="card">
+      <h4>什么是 Harness</h4>
+      <p>
+        英文 <code>harness</code> 直译是<strong>「挽具」</strong> —— 套在马身上，让它的力量沿着既定方向输出。
+        在 AI 工程里，Harness 是<strong>包裹在模型外部、用于约束、引导、增强 AI 行为的整套工程结构</strong>。
+        模型是发动机；Harness 是底盘、方向盘、刹车、仪表盘 —— <strong>把发动机变成一辆能上路的车</strong>。
+      </p>
+    </div>
+
+    <div class="harness-stack">
+      <div class="layer-row top">
+        <div class="role">用户 / 产品需求</div>
+        <div class="desc">业务输入 —— 一句话需求、一个工单、一份 PRD</div>
+      </div>
+      <div class="layer-row top">
+        <div class="role">Harness 层</div>
+        <div class="desc"><strong>项目记忆 + 工作流 + 外部能力 + 事件钩子 + 子代理编排</strong> ——
+        把模型的「自由发挥」收敛成「按基座规则执行」</div>
+      </div>
+      <div class="layer-row">
+        <div class="role">模型 / Agent</div>
+        <div class="desc">推理与决策引擎 —— 在 Harness 给定的边界内工作</div>
+      </div>
+      <div class="layer-row bottom">
+        <div class="role">真实系统</div>
+        <div class="desc">代码仓库、配置中心、部署平台、工单系统、文档系统 —— Harness 让模型能安全地触达它们</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h4>Harness 工程师做什么 · 五类动作</h4>
+      <p>
+        新岗位画像 —— <strong>Harness 工程师</strong>不一定写最多的业务代码，但决定了一支团队的 AI 能跑多快、多稳、多远：
+      </p>
+      <ul>
+        <li><strong>① 上下文供给</strong> —— 把项目知识沉淀成<strong>结构化的项目记忆</strong>（什么是「非显而易见」、什么是「不能碰的坑」）</li>
+        <li><strong>② 流程编排</strong> —— 把团队的标准动作沉淀成<strong>可触发的工作流模板</strong>（新增功能、调试故障、提交流程）</li>
+        <li><strong>③ 能力扩展</strong> —— 把内部系统封装成<strong>AI 可调用的能力</strong>（DUCC、行云、JoySpace）</li>
+        <li><strong>④ 行为约束</strong> —— 把红线规则编进<strong>事件钩子</strong>（敏感操作拦截、关键节点强制验证）</li>
+        <li><strong>⑤ 任务拆解</strong> —— 把复杂任务组织成<strong>子代理协作</strong>（探索、规划、实现、review）</li>
+      </ul>
+    </div>
+
+    <div class="callout info">
+      <strong>关键认知：</strong>Harness Engineering 不是某个具体工具的功能名，而是一种<strong>工程范式</strong>。
+      Claude Code 提供了一套相对完整的 harness 原语 —— <code>CLAUDE.md / Skills / MCP / Subagents / Hooks</code> ——
+      这五者并不是互不相关的功能列表，而是<strong>构建 harness 的五块积木</strong>。
+    </div>
+
+    <!-- CTA → claude-code-concepts.html -->
+    <div class="cta">
+      <span class="cta-eyebrow">▸ 接着看</span>
+      <h4>Claude Code 五大扩展机制 —— Harness 的五块积木</h4>
+      <p>
+        CLAUDE.md 怎么写、Skills 何时建、MCP 接什么、Subagents 怎么用、Hooks 在哪发力 ——
+        每一个机制对应 harness 的一类动作，组合起来就是你的 AI 工程基座。
+      </p>
+      <a href="claude-code-concepts.html">阅读《Claude Code 五大扩展机制》</a>
+    </div>
+  </section>
+</section>
+
+</main>
+
+<footer>
+  AI-Native 实践 · 从 Vibe Coding 到 Harness Engineering · 生成于 2026-06-07
+</footer>
+
+</body>
+</html>

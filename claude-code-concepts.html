@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code 五大扩展机制 · CLAUDE.md / Skills / MCP / Subagents / Hooks</title>
+<style>
+  :root{
+    --bg:#0a0e14;
+    --bg-elev:#10161f;
+    --bg-card:#141b26;
+    --border:#1f2937;
+    --border-strong:#2d3a४c;
+    --text:#e6edf3;
+    --text-dim:#8b949e;
+    --text-mute:#6e7681;
+    --accent:#00d4ff;
+    --accent-2:#a78bfa;
+    --accent-3:#34d399;
+    --warn:#fbbf24;
+    --danger:#f87171;
+    --code-bg:#0d1117;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;scroll-padding-top:80px}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.7;
+    font-size:15px;
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(0,212,255,.08) 0%, transparent 40%),
+      radial-gradient(circle at 80% 30%, rgba(167,139,250,.08) 0%, transparent 40%);
+    background-attachment:fixed;
+  }
+  /* nav */
+  .topnav{
+    position:sticky;top:0;z-index:50;
+    background:rgba(10,14,20,.85);
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);
+  }
+  .topnav-inner{
+    max-width:1100px;margin:0 auto;
+    display:flex;align-items:center;gap:24px;
+    padding:14px 32px;
+  }
+  .brand{
+    font-weight:700;font-size:15px;letter-spacing:.5px;
+    background:linear-gradient(90deg,var(--accent),var(--accent-2));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .topnav a{
+    color:var(--text-dim);text-decoration:none;font-size:13px;
+    padding:6px 10px;border-radius:6px;transition:all .2s;
+  }
+  .topnav a:hover{color:var(--text);background:rgba(255,255,255,.04)}
+
+  /* hero */
+  .hero{
+    max-width:1100px;margin:0 auto;
+    padding:80px 32px 60px;
+  }
+  .hero h1{
+    font-size:clamp(28px,4vw,44px);
+    line-height:1.2;
+    margin-bottom:18px;
+    background:linear-gradient(135deg,#fff 0%,#a78bfa 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero .lede{
+    color:var(--text-dim);font-size:17px;max-width:720px;
+  }
+  .tag-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+  .tag{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:12px;padding:5px 11px;border-radius:999px;
+    background:rgba(0,212,255,.08);
+    border:1px solid rgba(0,212,255,.25);
+    color:#7dd3fc;
+  }
+  .tag.purple{background:rgba(167,139,250,.08);border-color:rgba(167,139,250,.25);color:#c4b5fd}
+  .tag.green{background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.25);color:#6ee7b7}
+  .tag.amber{background:rgba(251,191,36,.08);border-color:rgba(251,191,36,.25);color:#fcd34d}
+  .tag.pink{background:rgba(244,114,182,.08);border-color:rgba(244,114,182,.25);color:#f9a8d4}
+
+  /* sections */
+  main{max-width:1100px;margin:0 auto;padding:0 32px 80px}
+  section{margin-bottom:72px;scroll-margin-top:80px}
+  .section-head{
+    display:flex;align-items:center;gap:14px;
+    margin-bottom:24px;padding-bottom:16px;
+    border-bottom:1px solid var(--border);
+  }
+  .section-num{
+    font-family:"SF Mono",Menlo,Consolas,monospace;
+    font-size:13px;color:var(--accent);
+    padding:4px 10px;border:1px solid rgba(0,212,255,.3);
+    border-radius:6px;background:rgba(0,212,255,.05);
+  }
+  .section-head h2{font-size:26px;font-weight:700}
+  .section-head .subtitle{color:var(--text-dim);font-size:14px;margin-left:auto}
+
+  /* card */
+  .card{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:24px 28px;
+    margin-bottom:18px;
+    transition:border-color .2s;
+  }
+  .card:hover{border-color:var(--border-strong)}
+  .card h3{
+    font-size:16px;font-weight:600;margin-bottom:12px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .card h3::before{
+    content:"";width:3px;height:16px;border-radius:2px;
+    background:linear-gradient(180deg,var(--accent),var(--accent-2));
+  }
+  .card p,.card li{color:var(--text-dim);font-size:14.5px}
+  .card ul{padding-left:22px;margin:8px 0}
+  .card li{margin:5px 0}
+  .card li strong{color:var(--text);font-weight:600}
+  .card code{
+    font-family:"SF Mono",Menlo,Consolas,monospace;
+    font-size:13px;background:var(--code-bg);
+    padding:2px 7px;border-radius:4px;
+    color:#7dd3fc;border:1px solid var(--border);
+  }
+
+  /* role label badges within cards */
+  .role-grid{display:grid;grid-template-columns:1fr;gap:14px}
+  @media(min-width:760px){.role-grid{grid-template-columns:repeat(3,1fr)}}
+  .role{
+    background:var(--bg-elev);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:18px 20px;
+  }
+  .role .label{
+    font-size:11px;text-transform:uppercase;letter-spacing:1.2px;
+    font-weight:700;margin-bottom:10px;
+  }
+  .role.use .label{color:var(--accent)}
+  .role.when .label{color:var(--accent-3)}
+  .role.tip .label{color:var(--warn)}
+  .role p,.role li{font-size:13.5px;color:var(--text-dim)}
+  .role ul{padding-left:18px}
+  .role li{margin:4px 0}
+
+  /* compare table */
+  .table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{
+    padding:14px 16px;text-align:left;
+    border-bottom:1px solid var(--border);
+    vertical-align:top;
+  }
+  th{
+    background:var(--bg-elev);
+    color:var(--text);font-weight:600;font-size:13px;
+    letter-spacing:.3px;
+  }
+  td{color:var(--text-dim)}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:rgba(255,255,255,.02)}
+  td:first-child{color:var(--text);font-weight:600}
+
+  /* callout */
+  .callout{
+    border-left:3px solid var(--warn);
+    background:rgba(251,191,36,.05);
+    padding:14px 18px;border-radius:0 8px 8px 0;
+    margin:14px 0;font-size:14px;color:#fcd34d;
+  }
+  .callout.danger{border-color:var(--danger);background:rgba(248,113,113,.05);color:#fca5a5}
+  .callout.info{border-color:var(--accent);background:rgba(0,212,255,.05);color:#7dd3fc}
+  .callout strong{color:inherit}
+
+  /* footer */
+  footer{
+    max-width:1100px;margin:0 auto;
+    padding:32px;border-top:1px solid var(--border);
+    color:var(--text-mute);font-size:13px;text-align:center;
+  }
+
+  /* do/don't compare blocks */
+  .compare-grid{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px}
+  @media(min-width:760px){.compare-grid{grid-template-columns:1fr 1fr}}
+  .compare-box{
+    border-radius:10px;padding:16px 18px;
+    border:1px solid var(--border);
+    background:var(--bg-elev);
+    font-size:13.5px;
+  }
+  .compare-box .head{
+    font-size:11px;font-weight:700;letter-spacing:1.2px;
+    text-transform:uppercase;margin-bottom:10px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .compare-box.good{border-color:rgba(52,211,153,.3);background:rgba(52,211,153,.04)}
+  .compare-box.good .head{color:var(--accent-3)}
+  .compare-box.bad{border-color:rgba(248,113,113,.3);background:rgba(248,113,113,.04)}
+  .compare-box.bad .head{color:var(--danger)}
+  .compare-box pre{
+    font-family:"SF Mono",Menlo,Consolas,monospace;
+    font-size:12.5px;color:var(--text);
+    white-space:pre-wrap;line-height:1.6;
+    margin:0;
+  }
+  .compare-box .why{
+    margin-top:10px;padding-top:10px;
+    border-top:1px dashed var(--border);
+    font-size:12.5px;color:var(--text-dim);
+  }
+
+  /* layered list (CLAUDE.md hierarchy) */
+  .layer-list{
+    display:flex;flex-direction:column;gap:10px;margin-top:10px;
+  }
+  .layer{
+    display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;
+    padding:12px 14px;border-radius:8px;
+    background:var(--bg-elev);border:1px solid var(--border);
+  }
+  .layer .lv{
+    font-family:"SF Mono",Menlo,Consolas,monospace;
+    font-size:11px;padding:3px 8px;border-radius:5px;
+    background:rgba(0,212,255,.1);color:var(--accent);
+    border:1px solid rgba(0,212,255,.25);
+    white-space:nowrap;
+  }
+  .layer .body{font-size:13.5px;color:var(--text-dim)}
+  .layer .body strong{color:var(--text)}
+
+  /* easter egg quote block */
+  .quote-block{
+    margin:16px 0;padding:20px 24px;
+    border-radius:12px;
+    background:
+      linear-gradient(135deg,rgba(167,139,250,.12) 0%,rgba(244,114,182,.08) 100%);
+    border:1px solid rgba(167,139,250,.3);
+    position:relative;overflow:hidden;
+  }
+  .quote-block::before{
+    content:"";position:absolute;top:-20px;left:18px;
+    font-family:Georgia,serif;font-size:90px;
+    color:rgba(167,139,250,.25);line-height:1;
+  }
+  .quote-block .quote-tag{
+    display:inline-block;
+    font-size:11px;font-weight:700;letter-spacing:1.5px;
+    padding:3px 9px;border-radius:5px;
+    background:rgba(167,139,250,.2);color:#c4b5fd;
+    margin-bottom:10px;
+  }
+  .quote-block .quote-body{
+    font-size:14.5px;line-height:1.8;color:var(--text);
+  }
+  .quote-block .quote-body em{
+    color:#f9a8d4;font-style:normal;font-weight:600;
+  }
+  .quote-block .quote-foot{
+    margin-top:12px;font-size:12.5px;color:var(--text-mute);
+    font-style:italic;
+  }
+
+  /* anchor offset highlight */
+  section:target .section-head{
+    animation:flash 1.2s ease;
+  }
+  @keyframes flash{
+    0%{box-shadow:0 0 0 2px rgba(0,212,255,.4)}
+    100%{box-shadow:0 0 0 0 transparent}
+  }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <span class="brand">◆ Claude Code · 五大扩展机制</span>
+    <a href="#claude-md">CLAUDE.md</a>
+    <a href="#skills">Skills</a>
+    <a href="#mcp">MCP</a>
+    <a href="#subagents">Subagents</a>
+    <a href="#hooks">Hooks</a>
+    <a href="#compare" style="margin-left:auto;color:var(--accent)">对比一览</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <h1>把 Claude Code 调教成你的专属工程师</h1>
+  <p class="lede">
+    CLAUDE.md、Skills、MCP、Subagents、Hooks —— Claude Code 的五种扩展机制。
+    本文逐一拆解它们的<strong>作用</strong>、<strong>何时添加</strong>、以及<strong>注意事项</strong>，结尾附一张五者对比速查表。
+  </p>
+  <div class="tag-row">
+    <span class="tag">上下文注入</span>
+    <span class="tag purple">能力扩展</span>
+    <span class="tag green">外部集成</span>
+    <span class="tag amber">流程编排</span>
+    <span class="tag pink">事件钩子</span>
+  </div>
+</header>
+
+<main>
+
+<!-- =================== CLAUDE.md =================== -->
+<section id="claude-md">
+  <div class="section-head">
+    <span class="section-num">01</span>
+    <h2>CLAUDE.md</h2>
+    <span class="subtitle">项目记忆 · 默认上下文</span>
+  </div>
+
+  <div class="card">
+    <h3>它是什么</h3>
+    <p>
+      CLAUDE.md 是会话开始时<strong>自动读入上下文</strong>的纯 Markdown ——
+      不会被执行、不会被渲染，只是「贴在模型眼前」的项目说明书。
+    </p>
+    <p style="margin-top:10px">
+      定位是<strong>「告诉模型那些代码看不出、但又频繁影响决策」</strong>的事实：技术栈、命名陷阱、编码约定、不要碰的坑。
+      和 README 的差别 —— README 写给人看，可以铺陈；CLAUDE.md 写给模型看，每一行都<strong>占上下文 token</strong>，
+      必须精炼到「删掉就会出事」的程度。
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>分层与生效顺序</h3>
+    <p>CLAUDE.md 支持多级放置，按「<strong>从近到远</strong>」叠加合并。越靠近当前工作文件的层级，优先级越高：</p>
+    <div class="layer-list">
+      <div class="layer">
+        <span class="lv">L1 · 子目录</span>
+        <div class="body"><strong>{repo}/sub/dir/CLAUDE.md</strong> —— 局部规则。例如「本目录全是前端代码，约束 React 风格」。只对该目录及子目录生效。</div>
+      </div>
+      <div class="layer">
+        <span class="lv">L2 · 项目根</span>
+        <div class="body"><strong>{repo}/CLAUDE.md</strong> —— 项目级总约定。<em>本项目</em>就是这一层，声明 GBK 编码、双架构入口、固化拼写错误等。</div>
+      </div>
+      <div class="layer">
+        <span class="lv">L3 · 用户全局</span>
+        <div class="body"><strong>~/.claude/CLAUDE.md</strong> —— 跨项目个人偏好。例如「回答用中文」「commit 信息用祈使句」。</div>
+      </div>
+    </div>
+    <p style="margin-top:14px;font-size:13.5px;color:var(--text-mute)">
+      合并是<strong>叠加</strong>而非覆盖。出现冲突时通常以更近层级为准，但<em>不保证强语义</em> ——
+      所以不要写「L3 说要做 X，L2 偷偷反例外」这种依赖优先级的写法，规则要在<strong>合适层级一次写清</strong>。
+    </p>
+  </div>
+
+  <div class="role-grid">
+    <div class="role use">
+      <div class="label">▎ 作用</div>
+      <ul>
+        <li>固化<strong>项目级常识</strong>，省去每次重复解释</li>
+        <li>声明<strong>禁止 / 必须</strong>的硬规则（本项目「禁止修改已有中文注释」）</li>
+        <li>记录<strong>已固化的拼写错误</strong>，防止 AI 好心改错（如 <code>parallelFristMap</code>）</li>
+        <li>提供<strong>常用命令</strong>速查 —— 构建、单模块编译、跑测试</li>
+        <li>标明<strong>「走哪条路」</strong> —— 双架构 / 历史包袱场景的明确指向</li>
+      </ul>
+    </div>
+    <div class="role when">
+      <div class="label">▎ 何时添加</div>
+      <ul>
+        <li>新项目接入 Claude Code 的<strong>第一件事</strong>（哪怕只写 10 行）</li>
+        <li>AI 反复犯<strong>同一个项目特定的错误</strong> —— 写进来就不会再犯</li>
+        <li>团队约定<strong>非显而易见</strong>，比如源码非 UTF-8、模块有不寻常的依赖方向</li>
+        <li>存在<strong>「看起来对、做起来错」</strong>的坑（拼写陷阱、过时 API、废弃路径）</li>
+        <li>有<strong>双轨/迁移</strong>状态，需要明确「新代码走哪条」</li>
+      </ul>
+    </div>
+    <div class="role tip">
+      <div class="label">▎ 注意事项</div>
+      <ul>
+        <li>每行都<strong>占上下文 token</strong>，控制在 ~200 行内最佳</li>
+        <li>只写<strong>非显而易见</strong>的事 —— 代码 / 文件名能看出的不要重复</li>
+        <li>用<strong>祈使句</strong>：「禁止 X」「必须 Y」 &gt; 「最好不要」「建议」</li>
+        <li>不要写<strong>会过期</strong>的内容（在做的需求、临时分支、当周 owner）</li>
+        <li>定期清理：规则一旦内化进代码或工具，就<strong>从 CLAUDE.md 删除</strong></li>
+        <li>不要堆<strong>背景故事</strong>，那是 README 的活</li>
+        <li>规则之间避免互相打架；分层写清，不要靠优先级硬猜</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px;font-weight:600;margin:24px 0 0;color:var(--text)">写得好 vs 写得差</h3>
+  <div class="compare-grid">
+    <div class="compare-box good">
+      <div class="head">✓ 好的 CLAUDE.md 条目</div>
+<pre>- 源文件编码 GBK，禁止用 UTF-8 写中文注释
+- 已固化拼写：parallelFristMap、acessControlFilter，禁止改正
+- 新增楼层只走 /entrance/finishCommonInfo.action + DUCC，禁止写 Java 代码
+- 构建：mvn -pl payfinish-rpc -am compile</pre>
+      <div class="why">✦ 每条都是<strong>看代码看不出、改错就出事</strong>的硬事实，祈使句 + 可执行，模型能直接照做。</div>
+    </div>
+    <div class="compare-box bad">
+      <div class="head">✗ 应该删掉的条目</div>
+<pre>- 本项目是一个支付完成页系统，负责……（README 内容）
+- 我们最近正在做 AI Native 改造，预计 Q3 完成
+- 代码风格请遵循阿里巴巴 Java 开发手册
+- Controller 在 web 模块，Service 在 service 模块（看目录就知道）</pre>
+      <div class="why">✦ 背景介绍属于 README；时效性信息会过期；通用规范模型已经知道；目录结构能直接看出来 —— 都是<strong>纯浪费 token</strong>。</div>
+    </div>
+  </div>
+
+  <div class="callout danger" style="margin-top:18px">
+    <strong>判断口诀 / 反模式：</strong>盖住每条问自己「模型看不到这条会出错吗？」 ——
+    答 <em>会</em> 留下，答 <em>不会</em> 删掉。<br>
+    把 CLAUDE.md 当「<em>许愿池</em>」（「请认真分析」「请考虑性能」）是典型反模式 ——
+    那是<strong>态度</strong>不是<strong>知识</strong>，只会稀释真正重要的信息。
+  </div>
+</section>
+
+<!-- =================== Skills =================== -->
+<section id="skills">
+  <div class="section-head">
+    <span class="section-num">02</span>
+    <h2>Skills</h2>
+    <span class="subtitle">可复用的工作流模板 · 也叫「同事的遗产」</span>
+  </div>
+
+  <div class="card">
+    <h3>它是什么</h3>
+    <p>
+      Skill 是带<strong>触发描述</strong>的可复用工作流，本质是一份带 frontmatter 的 Markdown：当用户请求语义匹配 <code>description</code> 时，
+      Claude 主动加载它，按里面的<strong>步骤、检查清单、流程图</strong>执行。把<strong>一位资深同事的肌肉记忆</strong>抽离成文件 ——
+      他踩过的坑、他面对某类需求时的标准动作，全部沉淀下来。
+    </p>
+    <p style="margin-top:10px">
+      与 CLAUDE.md 的区别 —— CLAUDE.md <strong>每次都加载</strong>，Skill <strong>按需触发</strong>，
+      所以可以做得很厚（含子文件、参考资料）而不污染上下文。
+    </p>
+  </div>
+
+  <div class="role-grid">
+    <div class="role use">
+      <div class="label">▎ 作用</div>
+      <ul>
+        <li>沉淀<strong>多步骤标准动作</strong>（TDD、调试、PR 流程、写规格）</li>
+        <li>用<strong>检查清单</strong>强制纪律，避免跳步</li>
+        <li>用<strong>触发描述</strong>实现「该用的时候自动用」</li>
+        <li>把项目特定操作（如「新增楼层」）封装成一键工作流</li>
+      </ul>
+    </div>
+    <div class="role when">
+      <div class="label">▎ 何时添加</div>
+      <ul>
+        <li>同一类任务<strong>做过 3 次以上</strong>，每次都要交代相同步骤</li>
+        <li>有<strong>容易跳步</strong>的关键流程（先写测试、提交前验证）</li>
+        <li>项目有<strong>独特操作模板</strong>（楼层接入、新组件配置）</li>
+        <li>团队希望<strong>标准化</strong>某种产出（设计文档、规格书）</li>
+        <li>某位同事<strong>即将离职 / 转岗</strong>，得趁早把他的套路抄走 ☕</li>
+      </ul>
+    </div>
+    <div class="role tip">
+      <div class="label">▎ 注意事项</div>
+      <ul>
+        <li><strong>description 是触发的关键</strong>：写清「何时用、何时不用」比写功能更重要</li>
+        <li>避免<strong>过度泛化</strong>的 description，会被错误触发污染上下文</li>
+        <li>区分<strong>刚性</strong>（必须按步骤）和<strong>柔性</strong>（参考原则）skill</li>
+        <li>多个 skill 同时匹配时，在 description 里说明优先级</li>
+        <li>定期回顾：写 skill 的同事真走了之后，<strong>没人维护</strong>的 skill 会变成新的坑</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="quote-block">
+    <span class="quote-tag">▎ 行业冷知识</span>
+    <div class="quote-body">
+      程序员的进化路径，是从「<em>写代码</em>」走到「<em>写规则</em>」、再走到「<em>写 skill</em>」。<br>
+      于是江湖上有这么一句话 ——<br>
+      <strong>「那些拿了大礼包的同事，其实从未离开你。他们只是变成了 skill，默默陪伴在每一次 Claude 调用里。」</strong><br>
+      你说，暖不暖心？🍂
+    </div>
+    <div class="quote-foot">—— 据说每个被沉淀下来的工作流背后，都有一个连夜写文档的灵魂。</div>
+  </div>
+</section>
+
+<!-- =================== MCP =================== -->
+<section id="mcp">
+  <div class="section-head">
+    <span class="section-num">03</span>
+    <h2>MCP（Model Context Protocol）</h2>
+    <span class="subtitle">外部工具与数据源的标准化接入</span>
+  </div>
+
+  <div class="card">
+    <h3>它是什么</h3>
+    <p>
+      MCP 是 Anthropic 推出的<strong>开放协议</strong>，让 Claude 通过统一的客户端-服务器模型调用<strong>外部工具与数据</strong>：
+      读数据库、查工单、操作 GitHub、访问内部 API。每个能力由一个 MCP Server 提供，Claude 当作一组 tool 调用 ——
+      相当于「<strong>给模型装外设</strong>」，Skills 是写在文件里的步骤，MCP 是真正能<strong>联网做事</strong>的接口。
+    </p>
+  </div>
+
+  <div class="role-grid">
+    <div class="role use">
+      <div class="label">▎ 作用</div>
+      <ul>
+        <li>突破<strong>本地文件系统</strong>边界，读写远端资源</li>
+        <li>对接<strong>企业内部系统</strong>（工单、文档、监控、CI）</li>
+        <li>提供<strong>类型化的工具调用</strong>，比让 AI 拼 curl 更可靠</li>
+        <li>多个项目<strong>共享同一套</strong>外部能力</li>
+      </ul>
+    </div>
+    <div class="role when">
+      <div class="label">▎ 何时添加</div>
+      <ul>
+        <li>需要接入<strong>企业内部系统</strong> —— DUCC 配置中心、行云部署、JoySpace 文档、工单</li>
+        <li>有<strong>内部 API</strong> 希望 AI 直接调用，而非打印命令让人复制</li>
+        <li>用 Bash + curl 拼接已经<strong>足够痛苦</strong>，需要类型化封装</li>
+        <li>多个项目 / 多人<strong>共用同一套</strong>外部能力</li>
+      </ul>
+    </div>
+    <div class="role tip">
+      <div class="label">▎ 注意事项</div>
+      <ul>
+        <li><strong>权限边界要清晰</strong>：MCP 工具默认拥有相应账号权限，等同放开了「真实操作」</li>
+        <li>区分<strong>只读 vs 写入</strong> server，写入操作建议默认 require approval</li>
+        <li>每个 MCP server <strong>暴露的 tool 都进 LLM 工具列表</strong>，太多会污染选择</li>
+        <li>不要把<strong>能用普通 CLI</strong>的事强行 MCP 化，普通 Bash 命令更轻量</li>
+        <li>注意<strong>凭证管理</strong>：token、密钥的存放位置和共享方式</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout">
+    <strong>常见误区：</strong>把 MCP 当万能扩展点。其实它是给「<strong>跨进程、有状态、需要凭证</strong>」的能力用的；
+    本地一行 bash 能解决的，不要 MCP。
+  </div>
+</section>
+
+<!-- =================== Subagents =================== -->
+<section id="subagents">
+  <div class="section-head">
+    <span class="section-num">04</span>
+    <h2>Subagents（子代理）</h2>
+    <span class="subtitle">独立上下文 · 并行 / 隔离 · 专精角色</span>
+  </div>
+
+  <div class="card">
+    <h3>它是什么</h3>
+    <p>
+      Subagent 是从主对话<strong>派生出去</strong>的独立 Claude 实例，有自己<strong>干净的上下文窗口</strong>和受限的工具集。
+      主代理通过 <code>Agent</code> 工具下发任务、接收摘要 —— 类似把活交给一个「带便签纸来汇报」的下属。
+    </p>
+    <p style="margin-top:10px">
+      典型预置类型：<code>Explore</code>（只读搜索）、<code>Plan</code>（架构设计）、<code>general-purpose</code>（全能），
+      也可以在 <code>.claude/agents/</code> 里自定义角色。
+    </p>
+  </div>
+
+  <div class="role-grid">
+    <div class="role use">
+      <div class="label">▎ 作用</div>
+      <ul>
+        <li><strong>保护主上下文</strong>：让子代理啃大量文件，只把结论带回</li>
+        <li><strong>并行化</strong>：多个独立任务同时跑（前端+后端+测试）</li>
+        <li><strong>角色专精</strong>：限定工具集 = 限定能干什么</li>
+        <li><strong>独立判断</strong>：不被主对话偏见污染，做客观 review</li>
+      </ul>
+    </div>
+    <div class="role when">
+      <div class="label">▎ 何时添加</div>
+      <ul>
+        <li>探索任务预计<strong>读 10+ 文件</strong>且大部分内容用不上</li>
+        <li>同时有<strong>2 个以上独立子任务</strong>可以并行</li>
+        <li>需要<strong>独立第二意见</strong>（code review、架构审计）</li>
+        <li>有<strong>角色边界</strong>需求（只能读、不能改）</li>
+      </ul>
+    </div>
+    <div class="role tip">
+      <div class="label">▎ 注意事项</div>
+      <ul>
+        <li>子代理<strong>看不到</strong>主对话历史，prompt 必须自包含</li>
+        <li>它的<strong>报告 ≠ 实际行为</strong>，对写代码类任务一定要 verify</li>
+        <li>简单查找别派子代理，<strong>直接 grep / Read 更快</strong></li>
+        <li>避免<strong>多层嵌套</strong>派发，调试链路会极其困难</li>
+        <li>明确告知<strong>读还是写</strong>，否则它会自行决定</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- =================== Hooks =================== -->
+<section id="hooks">
+  <div class="section-head">
+    <span class="section-num">05</span>
+    <h2>Hooks（钩子）</h2>
+    <span class="subtitle">事件驱动的强制约束</span>
+  </div>
+
+  <div class="card">
+    <h3>它是什么</h3>
+    <p>
+      Hook 是配置在 <code>settings.json</code> 里的 shell 命令，由 Claude Code <strong>harness（外壳进程）在事件发生时执行</strong> ——
+      不是模型自己执行。常见事件：<code>PreToolUse</code>、<code>PostToolUse</code>、<code>UserPromptSubmit</code>、
+      <code>Stop</code>、<code>SessionStart</code>。
+    </p>
+    <p style="margin-top:10px">
+      关键差异 ——<strong>CLAUDE.md 是「告诉模型应该怎么做」，Hook 是「不管模型怎么想都会发生」</strong>。
+      想要「保存自动 prettier」「提交前必跑测试」这种<strong>确定性行为</strong>，必须用 Hook。
+    </p>
+  </div>
+
+  <div class="role-grid">
+    <div class="role use">
+      <div class="label">▎ 作用</div>
+      <ul>
+        <li><strong>强制规则</strong>：拦截危险命令、阻断违规编辑</li>
+        <li><strong>自动化</strong>：保存即格式化、提交前自动验证</li>
+        <li><strong>注入上下文</strong>：会话启动时塞入项目状态、当前 PR 信息</li>
+        <li><strong>审计</strong>：记录所有工具调用到日志</li>
+      </ul>
+    </div>
+    <div class="role when">
+      <div class="label">▎ 何时添加</div>
+      <ul>
+        <li>「每次 / 每当 / 之后自动 X」类需求 —— Memory 解决不了</li>
+        <li>有<strong>不能违反的硬规则</strong>（如禁止 force push 到 main）</li>
+        <li>希望<strong>降低权限提示</strong>频次（PreToolUse 自动 approve 安全命令）</li>
+        <li>会话开始需要<strong>注入动态信息</strong>（当前分支状态、未读消息）</li>
+      </ul>
+    </div>
+    <div class="role tip">
+      <div class="label">▎ 注意事项</div>
+      <ul>
+        <li>Hook 是<strong>真正运行的 shell</strong>，写错会让会话卡死或崩溃</li>
+        <li><strong>不要做耗时操作</strong>：每次工具调用都跑，1s 都嫌长</li>
+        <li>用<strong>退出码</strong>沟通：0=放行，非 0=阻断（带 stderr 信息给模型）</li>
+        <li><strong>路径硬编码</strong>风险：hook 在不同机器上要可移植</li>
+        <li>调试困难：先用 <code>--dry-run</code> 或日志验证，再生效</li>
+        <li>被 hook 阻断时，模型会看到 stderr —— 写清楚「为什么被拒、怎么改」</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout danger">
+    <strong>红线：</strong>不要在 hook 里写「如果检测到敏感信息就 rm -rf」之类的<strong>不可逆动作</strong>。
+    Hook 应该<strong>报告并阻断</strong>，让人来决定后续。
+  </div>
+</section>
+
+<!-- =================== 对比 =================== -->
+<section id="compare">
+  <div class="section-head">
+    <span class="section-num">∑</span>
+    <h2>五者对比一览</h2>
+    <span class="subtitle">何时选谁，一眼看清</span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:13%">机制</th>
+          <th style="width:14%">本质</th>
+          <th style="width:13%">触发方式</th>
+          <th style="width:15%">作用域</th>
+          <th style="width:22%">最适合解决</th>
+          <th style="width:23%">不适合解决</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>CLAUDE.md</td>
+          <td>静态文档</td>
+          <td>会话启动时自动读入</td>
+          <td>项目 / 用户全局</td>
+          <td>项目常识、命名陷阱、必守约定</td>
+          <td>动态状态、复杂工作流、自动化执行</td>
+        </tr>
+        <tr>
+          <td>Skills</td>
+          <td>按需工作流</td>
+          <td>语义匹配 description 后调用</td>
+          <td>用户级 / 插件级</td>
+          <td>多步标准动作、检查清单、流程纪律</td>
+          <td>需要联网或调外部 API 的能力</td>
+        </tr>
+        <tr>
+          <td>MCP</td>
+          <td>外部工具协议</td>
+          <td>模型主动调用 tool</td>
+          <td>跨会话 / 跨项目</td>
+          <td>访问 DB、工单、内部 API、远端文档</td>
+          <td>本地一条命令就能做的事</td>
+        </tr>
+        <tr>
+          <td>Subagents</td>
+          <td>独立 Claude 实例</td>
+          <td>主代理通过 Agent 工具派发</td>
+          <td>本次会话临时</td>
+          <td>大范围探索、并行任务、独立 review</td>
+          <td>简单查找、需要主对话上下文的任务</td>
+        </tr>
+        <tr>
+          <td>Hooks</td>
+          <td>外壳事件回调</td>
+          <td>harness 在事件触发时执行</td>
+          <td>项目 / 用户全局</td>
+          <td>强制规则、自动格式化、上下文注入</td>
+          <td>需要模型判断的语义性任务</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout info" style="margin-top:24px">
+    <strong>选型直觉：</strong><br>
+    · 想让模型「<strong>知道</strong>」 → CLAUDE.md<br>
+    · 想让模型「<strong>会做</strong>」某种流程 → Skill<br>
+    · 想让模型「<strong>能碰到</strong>」外部世界 → MCP<br>
+    · 想让模型「<strong>分身</strong>」做事 → Subagent<br>
+    · 想让某事「<strong>一定发生</strong>」 → Hook
+  </div>
+</section>
+
+</main>
+
+<footer>
+  Claude Code 扩展机制速查 · 生成于 2026-06-07 · 适用于 Claude Code CLI / Desktop / Web
+</footer>
+
+</body>
+</html>
